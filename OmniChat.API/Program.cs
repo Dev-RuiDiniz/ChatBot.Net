@@ -1,66 +1,64 @@
-using Microsoft.EntityFrameworkCore;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
+using OmniChat.Application.Hubs;
 using OmniChat.Application.Services;
-using OmniChat.Domain.Interfaces;
-using OmniChat.Infrastructure.AI;
-using OmniChat.Infrastructure.Channels;
+using OmniChat.Domain.Entities;
 using OmniChat.Infrastructure.Persistence;
-using OmniChat.Infrastructure.Resilience;
+using OmniChat.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configuração de Banco de Dados (EF Core + SQL Server/Postgres)
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// --- Configuração Global do Mongo para GUIDs ---
+// Isso garante que os GUIDs do C# sejam salvos como strings padrão no Mongo
+// Evita problemas de compatibilidade binary entre drivers.
+BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
 
-// 2. Configuração de Resiliência e HttpClients
-builder.Services.AddHttpClient<OpenAIService>()
-    .AddPolicyHandler(ResiliencePolicies.GetRetryPolicy());
+// --- Configuração dos Serviços ---
+// Singleton é recomendado para MongoClient
+builder.Services.AddSingleton<MongoDbContext>();
 
-builder.Services.AddHttpClient<GeminiService>()
-    .AddPolicyHandler(ResiliencePolicies.GetRetryPolicy());
+builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<PlanRepository>();
+builder.Services.AddScoped<PlanEnforcementService>();
 
-builder.Services.AddHttpClient<WhatsAppChannel>()
-    .AddPolicyHandler(ResiliencePolicies.GetRetryPolicy());
+// Configuração via appsettings.json
+/*
+  "ConnectionStrings": {
+    "MongoConnection": "mongodb://admin:senha@localhost:27017"
+  },
+  "MongoSettings": {
+    "DatabaseName": "OmniChatDb"
+  }
+*/
 
-builder.Services.AddHttpClient<TelegramChannel>()
-    .AddPolicyHandler(ResiliencePolicies.GetRetryPolicy());
+builder.Services.AddSignalR();
 
-// 3. Injeção de Dependência dos Serviços Core
-builder.Services.AddScoped<IMcpRepository, McpRepository>();
-builder.Services.AddScoped<McpService>();
-builder.Services.AddScoped<IPlanEnforcementService, PlanEnforcementService>();
-builder.Services.AddScoped<SecureChatOrchestrator>();
-
-// 4. Factory e Estratégias
-builder.Services.AddScoped<IAIFactory, AiFactory>();
-
-// Registro dos Canais como uma coleção para o Orquestrador escolher ou usar todos
-builder.Services.AddScoped<IMessagingChannel, WhatsAppChannel>();
-builder.Services.AddScoped<IMessagingChannel, TelegramChannel>();
-
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// ... outros serviços ...
 
 var app = builder.Build();
 
-// --- Pipeline de Execução ---
+// Mapear rota
+app.MapHub<ChatHub>("/chathub");
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-
-// Migração automática ao iniciar (Cuidado em produção, usar apenas se tiver controle)
+// --- Seed Inicial (Opcional) ---
+// Criar um plano padrão se não existir
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    var planRepo = scope.ServiceProvider.GetRequiredService<PlanRepository>();
+    var existingPlans = await planRepo.GetAllActivePlansAsync();
+    
+    if (!existingPlans.Any())
+    {
+        var freePlan = new Plan 
+        { 
+            Id = Guid.NewGuid(), 
+            Name = "Free Tier", 
+            MonthlyMessageLimit = 50, 
+            AllowGpt4 = false 
+        };
+        await planRepo.CreatePlanAsync(freePlan);
+    }
 }
 
 app.Run();

@@ -1,0 +1,85 @@
+﻿@page "/connections"
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@attribute [Authorize(Roles = "OrganizationAdmin")]
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h5" GutterBottom="true">Canais de Comunicação</MudText>
+
+    <MudGrid>
+        <!-- WhatsApp Card -->
+        <MudItem xs="12" md="6">
+            <MudCard Class="pa-4">
+                <MudCardHeader>
+                    <CardHeaderAvatar>
+                        <MudIcon Icon="@Icons.Custom.Brands.WhatsApp" Size="Size.Large" Color="Color.Success" />
+                    </CardHeaderAvatar>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">WhatsApp Business</MudText>
+                        <MudText Typo="Typo.body2">Conexão via QR Code ou API Oficial</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudChip Color="@(_whatsappStatus == "Connected" ? Color.Success : Color.Error)">
+                            @_whatsappStatus
+                        </MudChip>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_whatsappStatus == "Disconnected")
+                    {
+                        <div class="d-flex justify-center my-4">
+                            @if (_qrCodeBase64 != null)
+                            {
+                                <MudImage Src="@($"data:image/png;base64,{_qrCodeBase64}")" Width="200" />
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Outlined" OnClick="GenerateQrCode">Gerar QR Code</MudButton>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Success">Sua instância está sincronizada e recebendo mensagens.</MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Telegram Card -->
+        <MudItem xs="12" md="6">
+            <MudCard Class="pa-4">
+                <MudCardHeader>
+                    <CardHeaderAvatar>
+                        <MudIcon Icon="@Icons.Custom.Brands.Telegram" Size="Size.Large" Color="Color.Info" />
+                    </CardHeaderAvatar>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Telegram Bot</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTextField @bind-Value="_telegramToken" Label="Bot Token (BotFather)" Variant="Variant.Outlined" InputType="InputType.Password" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="SaveTelegramToken">Conectar</MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private string _whatsappStatus = "Disconnected";
+    private string? _qrCodeBase64;
+    private string _telegramToken;
+
+    private async Task GenerateQrCode()
+    {
+        // Simulação de chamada à API que retorna a imagem do QR
+        _loading = true;
+        // var result = await Http.PostAsync("api/channels/whatsapp/connect");
+        // _qrCodeBase64 = result.QrCode;
+        _qrCodeBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="; // Placeholder
+        _loading = false;
+        
+        // Iniciar polling para verificar status de conexão
+    }
+}

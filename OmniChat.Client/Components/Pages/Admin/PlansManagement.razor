@@ -1,0 +1,50 @@
+﻿@page "/admin/plans"
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@using OmniChat.Domain.Entities
+@attribute [Authorize(Roles = "SuperAdmin")]
+@inject HttpClient Http
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Gestão de Planos e Serviços</MudText>
+    
+    <MudTable Items="@_plans" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading">
+        <HeaderContent>
+            <MudTh>Nome</MudTh>
+            <MudTh>Preço</MudTh>
+            <MudTh>Max Usuários</MudTh>
+            <MudTh>IA Habilitada</MudTh>
+            <MudTh>Ações</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Nome">@context.Name</MudTd>
+            <MudTd DataLabel="Preço">@context.Price.ToString("C")</MudTd>
+            <MudTd DataLabel="Max Usuários">
+                @(context.MaxUsers == -1 ? "Ilimitado" : context.MaxUsers)
+            </MudTd>
+            <MudTd DataLabel="IA">
+                <MudChip Color="@(context.Features.HasAiChatbot ? Color.Success : Color.Error)">
+                    @(context.Features.HasAiChatbot ? "Sim" : "Não")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditPlan(context))" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+    
+    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Class="mt-4" OnClick="CreatePlan" />
+</MudContainer>
+
+@code {
+    private List<Plan> _plans = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _plans = await Http.GetFromJsonAsync<List<Plan>>("api/admin/plans");
+        _loading = false;
+    }
+    
+    // Lógica de Create/Edit omitida para brevidade
+}

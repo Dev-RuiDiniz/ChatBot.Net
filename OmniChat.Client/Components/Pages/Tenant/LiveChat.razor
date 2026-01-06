@@ -1,0 +1,89 @@
+﻿@page "/live-chat"
+@using Microsoft.AspNetCore.SignalR.Client
+@using MudBlazor
+@using OmniChat.Domain.Interfaces
+@inject NavigationManager Navigation
+@inject IEncryptionService Crypto
+
+<MudGrid>
+    <!-- Lista de Conversas -->
+    <MudItem xs="4">
+        <MudList Clickable="true">
+            @foreach(var chat in _activeChats)
+            {
+                <MudListItem OnClick="() => SelectChat(chat.UserId)">
+                    <MudText>@chat.UserPhone</MudText>
+                    <MudText Typo="Typo.caption">@chat.LastMessagePreview</MudText>
+                </MudListItem>
+            }
+        </MudList>
+    </MudItem>
+
+    <!-- Janela de Chat -->
+    <MudItem xs="8">
+        @if(_selectedChatId != Guid.Empty)
+        {
+            <MudPaper Height="600px" Class="d-flex flex-column">
+                <div class="flex-grow-1 pa-4 overflow-auto">
+                    @foreach(var msg in _messages)
+                    {
+                        <div class="@(msg.IsBot ? "d-flex justify-start" : "d-flex justify-end") mb-2">
+                            <MudPaper Class="pa-3" Color="@(msg.IsBot ? Color.Surface : Color.Primary)">
+                                @msg.Content
+                            </MudPaper>
+                        </div>
+                    }
+                </div>
+                
+                <!-- Input de Resposta Manual -->
+                <div class="pa-4 d-flex gap-2">
+                    <MudTextField @bind-Value="_newMessage" Placeholder="Digite sua resposta..." Variant="Variant.Outlined" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Send" OnClick="SendMessage" Color="Color.Secondary" />
+                </div>
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private HubConnection? hubConnection;
+    private List<ChatSessionDto> _activeChats = new();
+    private List<MessageDto> _messages = new();
+    private string _newMessage;
+    private Guid _selectedChatId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/chathub"), options => {
+                options.AccessTokenProvider = () => Task.FromResult("JWT_TOKEN_HERE");
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Recebe atualização em tempo real
+        hubConnection.On<Guid, string, string>("ReceiveMessage", (userId, message, type) =>
+        {
+            if(userId == _selectedChatId)
+            {
+                _messages.Add(new MessageDto { Content = message, IsBot = type.Contains("Bot") });
+                StateHasChanged();
+            }
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task SendMessage()
+    {
+        // 1. Criptografa no cliente
+        var encrypted = Crypto.Encrypt(_newMessage);
+        
+        // 2. Envia para o Hub
+        await hubConnection.SendAsync("SendMessageToCustomer", _selectedChatId.ToString(), encrypted);
+        
+        // 3. Atualiza UI local
+        _messages.Add(new MessageDto { Content = _newMessage, IsBot = true });
+        _newMessage = "";
+    }
+}

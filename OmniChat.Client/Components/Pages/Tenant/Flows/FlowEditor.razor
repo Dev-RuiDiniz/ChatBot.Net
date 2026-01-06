@@ -1,0 +1,89 @@
+﻿@page "/flows/edit/{FlowId:guid?}"
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@attribute [Authorize(Roles = "OrganizationAdmin")]
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- Sidebar de Propriedades -->
+        <MudItem xs="4">
+            <MudPaper Class="pa-4" Height="80vh">
+                <MudText Typo="Typo.h6">Configuração do Nó</MudText>
+                @if (_selectedNode != null)
+                {
+                    <MudTextField @bind-Value="_selectedNode.Content" Label="Mensagem do Bot" Variant="Variant.Outlined" Lines="3" Class="mb-4" />
+                    
+                    <MudSelect @bind-Value="_selectedNode.Type" Label="Tipo de Ação">
+                        <MudSelectItem Value="@("Menu")">Menu de Opções</MudSelectItem>
+                        <MudSelectItem Value="@("Input")">Aguardar Texto</MudSelectItem>
+                        <MudSelectItem Value="@("Handover")">Transferir para Humano</MudSelectItem>
+                    </MudSelect>
+
+                    <MudText Class="mt-4">Opções (Botões)</MudText>
+                    @foreach (var option in _selectedNode.Options)
+                    {
+                        <div class="d-flex gap-2 mb-2">
+                            <MudTextField @bind-Value="option.Label" Label="Texto do Botão" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => RemoveOption(option))" />
+                        </div>
+                    }
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="AddOption">Adicionar Opção</MudButton>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">Selecione um passo do fluxo ao lado para editar.</MudAlert>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <!-- Visualização da Árvore (Canvas Simplificado) -->
+        <MudItem xs="8">
+            <MudPaper Class="pa-4 gray-bg" Height="80vh" Style="overflow: auto;">
+                <MudTreeView Items="_flowNodes" MultiSelection="false">
+                    <ItemTemplate>
+                        <MudTreeViewItem Value="@context" 
+                                         Text="@context.Content" 
+                                         EndText="@context.Type"
+                                         Icon="@Icons.Material.Filled.Message"
+                                         OnClick="@(() => SelectNode(context))" />
+                    </ItemTemplate>
+                </MudTreeView>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+    
+    <MudFab Color="Color.Primary" Icon="@Icons.Material.Filled.Save" Class="fixed-fab" OnClick="SaveFlow" />
+</MudContainer>
+
+<style>
+    .fixed-fab { position: fixed; bottom: 20px; right: 20px; }
+    .gray-bg { background-color: #f5f5f5; }
+</style>
+
+@code {
+    [Parameter] public Guid? FlowId { get; set; }
+    
+    // Representação visual local do grafo
+    private HashSet<FlowNodeDto> _flowNodes = new(); 
+    private FlowNodeDto? _selectedNode;
+
+    protected override void OnInitialized()
+    {
+        // Mock de dados iniciais
+        var root = new FlowNodeDto { Id = "start", Content = "Olá! Bem vindo.", Type = "Menu" };
+        root.Options.Add(new FlowOptionDto { Label = "Financeiro", TargetNodeId = "fin" });
+        _flowNodes.Add(root);
+    }
+
+    private void SelectNode(FlowNodeDto node) => _selectedNode = node;
+    
+    private void AddOption() => _selectedNode?.Options.Add(new FlowOptionDto());
+    private void RemoveOption(FlowOptionDto opt) => _selectedNode?.Options.Remove(opt);
+
+    private async Task SaveFlow()
+    {
+        // Serializa e envia para API (MongoDB)
+        // await Http.PostAsJsonAsync("api/flows", _flowNodes);
+        Snackbar.Add("Fluxo salvo com sucesso!", Severity.Success);
+    }
+}

@@ -1,46 +1,57 @@
-﻿using OmniChat.Domain.Entities;
+﻿using MongoDB.Driver;
+using OmniChat.Domain.Entities;
 using OmniChat.Domain.Interfaces;
 using OmniChat.Infrastructure.Persistence;
+using OmniChat.Infrastructure.Repositories;
 
 namespace OmniChat.Application.Services;
 
-public class PlanEnforcementService : IPlanEnforcementService
+public class PlanEnforcementService
 {
-    private readonly AppDbContext _context;
+    private readonly MongoDbContext _db;
 
-    public PlanEnforcementService(AppDbContext context)
+    public PlanEnforcementService(MongoDbContext db)
     {
-        _context = context;
+        _db = db;
     }
 
-    public async Task<UserSubscription> GetSubscriptionAsync(Guid userId)
+    // Validação de Feature Genérica
+    public async Task<bool> CanAccessFeatureAsync(Guid organizationId, Func<PlanFeatures, bool> featureSelector)
     {
-        var subscription = await _context.UserSubscriptions
-            .Include(u => u.Plan)
-            .FirstOrDefaultAsync(u => u.UserId == userId);
+        // 1. Busca Organização com projeção leve
+        var org = await _db.Organizations
+            .Find(o => o.Id == organizationId)
+            .FirstOrDefaultAsync();
 
-        if (subscription == null)
-            throw new Exception("Usuário sem assinatura ativa.");
+        if (org == null) return false;
 
-        // Lógica de Reset Mensal (Simplificada)
-        // Idealmente, isso seria feito por um Background Service (Quartz.NET ou Hangfire)
-        if (subscription.LastResetDate.Month != DateTime.UtcNow.Month)
-        {
-            subscription.MessagesUsedThisMonth = 0;
-            subscription.LastResetDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-        }
+        // 2. Busca Plano (Idealmente do Cache)
+        var plan = await _db.Plans
+            .Find(p => p.Id == org.Subscription.PlanId)
+            .FirstOrDefaultAsync();
 
-        return subscription;
+        if (plan == null) return false;
+
+        // 3. Verifica Status da Assinatura (Trial ou Ativo)
+        bool isActive = org.Subscription.Status == SubscriptionStatus.Active;
+        bool isTrial = org.Subscription.Status == SubscriptionStatus.Trialing 
+                       && org.Subscription.TrialEndsAt > DateTime.UtcNow;
+
+        if (!isActive && !isTrial) return false;
+
+        // 4. Verifica a Feature específica
+        return featureSelector(plan.Features);
     }
 
-    public async Task RegisterUsageAsync(Guid userId)
+    // Validação Específica: Posso adicionar mais um usuário?
+    public async Task<bool> CanAddUserAsync(Guid organizationId)
     {
-        var subscription = await _context.UserSubscriptions.FindAsync(userId);
-        if (subscription != null)
-        {
-            subscription.MessagesUsedThisMonth++;
-            await _context.SaveChangesAsync();
-        }
+        var org = await _db.Organizations.Find(o => o.Id == organizationId).FirstOrDefaultAsync();
+        var plan = await _db.Plans.Find(p => p.Id == org.Subscription.PlanId).FirstOrDefaultAsync();
+
+        // Se for -1 é ilimitado (Customizado), senão verifica a contagem atual
+        if (plan.MaxUsers == -1) return true;
+
+        return org.MemberIds.Count < plan.MaxUsers;
     }
 }

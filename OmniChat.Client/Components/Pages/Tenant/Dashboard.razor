@@ -1,0 +1,35 @@
+﻿@page "/dashboard"
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@attribute [Authorize(Roles = "OrganizationAdmin")]
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudGrid>
+        <!-- Card de Assinatura -->
+        <MudItem xs="12" md="4">
+            <MudCard Class="pa-4 shade-card">
+                <MudCardContent>
+                    <MudText>Seu Plano</MudText>
+                    <MudText Typo="Typo.h3">Profissional</MudText>
+                    <MudProgressLinear Color="Color.Primary" Value="75" Class="my-3" />
+                    <MudText Typo="Typo.caption">750 / 1000 mensagens usadas</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Gráfico de Uso -->
+        <MudItem xs="12" md="8">
+            <MudPaper Class="pa-4">
+                <MudChart ChartType="ChartType.Line" ChartSeries="@_series" XAxisLabels="@_xAxisLabels" Width="100%" Height="300px" />
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    public List<ChartSeries> _series = new List<ChartSeries>()
+    {
+        new ChartSeries() { Name = "Mensagens", Data = new double[] { 40, 20, 25, 27, 46, 60, 48, 80, 15 } },
+    };
+    public string[] _xAxisLabels = { "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set" };
+}
