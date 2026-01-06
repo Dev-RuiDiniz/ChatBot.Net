@@ -6,6 +6,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniChat.Application", "Omn
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniChat.Infrastructure", "OmniChat.Infrastructure\OmniChat.Infrastructure.csproj", "{FCEF9237-9850-4B1C-AFC7-B3F28EFB75C3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniChat.API", "OmniChat.API\OmniChat.API.csproj", "{47907E39-9A96-431E-89A5-01CE9C68D8EB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniChat.WebUI", "OmniChat.WebUI\OmniChat.WebUI.csproj", "{C3EE2AA2-979D-4DBD-9F21-5D7FB7E1006D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +28,13 @@ Global
 		{FCEF9237-9850-4B1C-AFC7-B3F28EFB75C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FCEF9237-9850-4B1C-AFC7-B3F28EFB75C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FCEF9237-9850-4B1C-AFC7-B3F28EFB75C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{47907E39-9A96-431E-89A5-01CE9C68D8EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{47907E39-9A96-431E-89A5-01CE9C68D8EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{47907E39-9A96-431E-89A5-01CE9C68D8EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{47907E39-9A96-431E-89A5-01CE9C68D8EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3EE2AA2-979D-4DBD-9F21-5D7FB7E1006D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3EE2AA2-979D-4DBD-9F21-5D7FB7E1006D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3EE2AA2-979D-4DBD-9F21-5D7FB7E1006D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3EE2AA2-979D-4DBD-9F21-5D7FB7E1006D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

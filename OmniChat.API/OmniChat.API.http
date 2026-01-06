@@ -1,0 +1,6 @@
+@OmniChat.API_HostAddress = http://localhost:5022
+
+GET {{OmniChat.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

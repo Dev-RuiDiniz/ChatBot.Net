@@ -1,0 +1,41 @@
+﻿@page "/monitor"
+@inject IChatHistoryService HistoryService
+
+<div class="dashboard-container">
+    <div class="stats-panel">
+        <div class="card">
+            <h3>Mensagens Hoje</h3>
+            <span class="number">1,240</span>
+        </div>
+        <div class="card">
+            <h3>Custo API (Estimado)</h3>
+            <span class="number">$4.50</span>
+        </div>
+    </div>
+
+    <div class="live-feed">
+        <h3>Conversas em Tempo Real</h3>
+        <div class="chat-window">
+            @foreach (var msg in Messages)
+            {
+                <div class="message @(msg.IsBot ? "bot" : "user")">
+                    <span class="sender">@msg.SenderName (@msg.Channel)</span>
+                    <p>@msg.Content</p>
+                    <span class="meta">IA: @msg.AiProvider | @msg.Timestamp</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Exemplo simples de CSS para UX limpa */
+    .dashboard-container { display: grid; gap: 20px; padding: 20px; background-color: #1e1e2e; color: #fff; height: 100vh; }
+    .message { padding: 10px; border-radius: 8px; margin-bottom: 10px; max-width: 80%; }
+    .user { background-color: #3e4a61; align-self: flex-start; }
+    .bot { background-color: #007bff; align-self: flex-end; margin-left: auto; }
+</style>
+
+@code {
+    // Lógica para assinar eventos e atualizar a UI quando chegar mensagem nova
+}
