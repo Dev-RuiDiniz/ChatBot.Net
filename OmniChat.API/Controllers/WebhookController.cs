@@ -1,6 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OmniChat.Application.Services;
+using OmniChat.Domain.Interfaces;
 using OmniChat.Domain.ValueObjects;
+using OmniChat.Infrastructure.Persistence; // Para IdempotencyService
+using OmniChat.Infrastructure.Repositories;
+using OmniChat.Shared.DTOs; // Importante para WhatsAppPayload
+using System.Text.Json;
 
 namespace OmniChat.API.Controllers;
 
@@ -8,23 +13,41 @@ namespace OmniChat.API.Controllers;
 [Route("api/webhook")]
 public class WebhookController : ControllerBase
 {
-    private readonly ChatOrchestrator _orchestrator;
+    // Usamos o SecureChatOrchestrator (V2) que tem o método ProcessMessageAsync
+    private readonly SecureChatOrchestrator _orchestrator;
     private readonly IConfiguration _config;
+    
+    // Serviços que estavam faltando na injeção de dependência
+    private readonly IdempotencyService _idempotencyService;
+    private readonly UserRepository _userRepo;
+    private readonly ILogger<WebhookController> _logger;
+    private readonly IMessagingChannel _whatsAppChannel; // Ou IEnumerable<IMessagingChannel>
 
-    public WebhookController(ChatOrchestrator orchestrator, IConfiguration config)
+    public WebhookController(
+        SecureChatOrchestrator orchestrator, 
+        IConfiguration config,
+        IdempotencyService idempotencyService,
+        UserRepository userRepo,
+        ILogger<WebhookController> logger,
+        IEnumerable<IMessagingChannel> channels)
     {
         _orchestrator = orchestrator;
         _config = config;
+        _idempotencyService = idempotencyService;
+        _userRepo = userRepo;
+        _logger = logger;
+        
+        // Seleciona o canal específico para envio de resposta
+        _whatsAppChannel = channels.FirstOrDefault(c => c.ChannelName == "WhatsApp") 
+                           ?? throw new Exception("Canal WhatsApp não configurado.");
     }
 
-    // --- WHATSAPP & INSTAGRAM (Meta utiliza o mesmo padrão) ---
-    
+    // --- VERIFICAÇÃO DO TOKEN (GET) ---
     [HttpGet("meta")]
     public IActionResult VerifyMetaToken([FromQuery(Name = "hub.mode")] string mode,
                                          [FromQuery(Name = "hub.verify_token")] string token,
                                          [FromQuery(Name = "hub.challenge")] string challenge)
     {
-        // Validação necessária para ativar o webhook no painel do Facebook Developers
         if (mode == "subscribe" && token == _config["Meta:VerifyToken"])
         {
             return Ok(challenge);
@@ -32,88 +55,103 @@ public class WebhookController : ControllerBase
         return Unauthorized();
     }
 
+    // --- RECEBIMENTO DE MENSAGEM (POST) ---
     [HttpPost("meta")]
-    public async Task<IActionResult> ReceiveMetaMessage([FromBody] dynamic payload)
+    public async Task<IActionResult> ReceiveMetaMessage([FromBody] JsonElement payload)
     {
-        string messageId = ExtractId(payload); // "wamid.HBgNM..."
-    
-        if (await _idempotencyService.IsProcessedAsync(messageId))
+        // 1. Extração de ID para Idempotência (Evitar mensagens duplicadas)
+        string messageId = ExtractId(payload); 
+
+        if (!string.IsNullOrEmpty(messageId))
         {
-            _logger.LogWarning("Mensagem duplicada ignorada: {Id}", messageId);
-            return Ok(); // Retorna 200 para o Facebook parar de enviar
+            if (await _idempotencyService.IsProcessedAsync(messageId))
+            {
+                _logger.LogWarning("Mensagem duplicada ignorada: {Id}", messageId);
+                return Ok();
+            }
         }
 
         try 
         {
-            var entry = payload.GetProperty("entry")[0];
-            var changes = entry.GetProperty("changes")[0];
-            var value = changes.GetProperty("value");
-            
-            if (value.TryGetProperty("messages", out var messages))
-            {
-                var message = messages[0];
-                string from = message.GetProperty("from").GetString();
-                string text = message.GetProperty("text").GetProperty("body").GetString();
+            // Desserializa para o DTO fortemente tipado para facilitar o acesso
+            var jsonText = payload.GetRawText();
+            var data = JsonSerializer.Deserialize<WhatsAppPayload>(jsonText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                // Dispara o processamento em background para não bloquear o webhook
-                _ = _orchestrator.HandleIncomingMessage("WhatsApp", from, text);
+            if (data?.Entry != null && 
+                data.Entry.Count > 0 && 
+                data.Entry[0].Changes != null && 
+                data.Entry[0].Changes.Count > 0 &&
+                data.Entry[0].Changes[0].Value.Messages != null &&
+                data.Entry[0].Changes[0].Value.Messages.Count > 0)
+            {
+                var message = data.Entry[0].Changes[0].Value.Messages[0];
+                string from = message.From; // Telefone
+                string text = message.Text?.Body;
+
+                if (!string.IsNullOrEmpty(text))
+                {
+                    // Lógica principal: 
+                    // 1. Achar usuário pelo telefone
+                    // 2. Processar mensagem (IA/Fluxo)
+                    // 3. Enviar resposta
+                    await ProcessWhatsAppFlow(from, text);
+                }
             }
         }
         catch (Exception ex)
         {
-            // Logar erro, mas retornar 200 OK para o Facebook não tentar reenviar infinitamente
-            Console.WriteLine($"Erro parsing Meta: {ex.Message}");
+            _logger.LogError(ex, "Erro parsing Meta Payload");
         }
 
         return Ok();
     }
 
-    // --- TELEGRAM ---
+    // Método auxiliar privado para processar a lógica
+    private async Task ProcessWhatsAppFlow(string phoneNumber, string text)
+    {
+        // 1. Busca ID do usuário pelo telefone
+        var user = await _userRepo.GetByPhoneNumberAsync(phoneNumber);
+        
+        // Se usuário não existe, talvez criar um lead ou ignorar (depende da regra de negócio)
+        if (user == null) 
+        {
+            _logger.LogWarning("Mensagem recebida de número desconhecido: {Phone}", phoneNumber);
+            return;
+        }
 
-    [HttpPost("telegram")]
-    public async Task<IActionResult> ReceiveTelegramMessage([FromBody] dynamic update)
+        // 2. Orquestrador processa e retorna texto criptografado
+        EncryptedText responseEncrypted = await _orchestrator.ProcessMessageAsync(user.Id, text);
+
+        // 3. Descriptografa APENAS para enviar à API do WhatsApp
+        string plainResponse = responseEncrypted.ToPlainText(_config["Security:MasterEncryptionKey"]);
+    
+        // 4. Envia resposta via Canal
+        await _whatsAppChannel.SendMessageAsync(user.PhoneNumber, plainResponse);
+    }
+
+    // Método auxiliar para extrair o ID do JSON bruto
+    private string ExtractId(JsonElement payload)
     {
         try
         {
-            var message = update.GetProperty("message");
-            string chatId = message.GetProperty("chat").GetProperty("id").ToString();
-            string text = message.GetProperty("text").GetString();
-
-            _ = _orchestrator.HandleIncomingMessage("Telegram", chatId, text);
+            // Navegação segura no JSON dinâmico
+            if (payload.TryGetProperty("entry", out var entry) && entry.GetArrayLength() > 0)
+            {
+                var changes = entry[0].GetProperty("changes");
+                if (changes.GetArrayLength() > 0)
+                {
+                    var value = changes[0].GetProperty("value");
+                    if (value.TryGetProperty("messages", out var messages) && messages.GetArrayLength() > 0)
+                    {
+                        return messages[0].GetProperty("id").GetString();
+                    }
+                }
+            }
         }
-        catch
-        {
-            // Log error
+        catch 
+        { 
+            // Ignora falhas de estrutura, retorna null
         }
-        return Ok();
-    }
-    
-    [HttpPost("webhook/whatsapp")]
-    public async Task<IActionResult> WhatsAppWebhook([FromBody] WhatsAppPayload payload)
-    {
-        // Extração do ID do usuário (Número de telefone)
-        // Na prática, deve-se mapear Telefone -> Guid UserId no banco
-        Guid userId = await _userRepo.GetUserIdByPhone(payload.Entry[0].Changes[0].Value.Messages[0].From);
-        string text = payload.Entry[0].Changes[0].Value.Messages[0].Text.Body;
-
-        try 
-        {
-            // O orquestrador retorna o objeto criptografado
-            EncryptedText response = await _orchestrator.ProcessMessageAsync(userId, text);
-
-            // Descriptografar APENAS no momento exato do envio para a API do WhatsApp
-            // O "SendToWhatsApp" usará TLS (HTTPS) do transporte padrão
-            string plainResponse = response.ToPlainText(_config["Security:MasterEncryptionKey"]);
-        
-            await _channelService.SendAsync(userId, plainResponse);
-        
-            return Ok();
-        }
-        catch (Exception ex)
-        {
-            // Logar erro (sem logar o conteúdo da mensagem!)
-            _logger.LogError(ex, "Erro processando mensagem do usuário {UserId}", userId);
-            return Ok(); // Retornar OK para o webhook não tentar reenviar infinito
-        }
+        return null;
     }
 }

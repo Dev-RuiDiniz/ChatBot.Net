@@ -12,6 +12,21 @@ public class UserRepository
     {
         _context = context;
     }
+    
+    public async Task<User?> GetByEmailAsync(string email)
+    {
+        return await _context.Users
+            .Find(u => u.Email == email)
+            .FirstOrDefaultAsync();
+    }
+
+    // O método abaixo também será útil para o PlanEnforcementService (passo 22 do histórico)
+    public async Task<User?> GetByIdAsync(Guid id)
+    {
+        return await _context.Users
+            .Find(u => u.Id == id)
+            .FirstOrDefaultAsync();
+    }
 
     public async Task<User?> GetByPhoneNumberAsync(string phoneNumber)
     {

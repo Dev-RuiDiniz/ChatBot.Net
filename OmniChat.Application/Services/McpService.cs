@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using OmniChat.Domain.Interfaces;
 using OmniChat.Domain.MCP;
 
 namespace OmniChat.Application.Services;

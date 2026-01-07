@@ -1,11 +1,29 @@
-﻿namespace OmniChat.Application.Services;
+﻿using MongoDB.Driver;
+using OmniChat.Domain.Entities; // Resolve 'User', 'Organization'
+using OmniChat.Domain.Enums;    // Resolve 'UserRole', 'SubscriptionStatus'
+using OmniChat.Infrastructure.Persistence; // Resolve 'MongoDbContext'
+using OmniChat.Shared.DTOs;
+
+namespace OmniChat.Application.Services;
 
 public class RegisterOrganizationUseCase
 {
+    private readonly MongoDbContext _db;
+
+    // Construtor para injeção de dependência (Resolve o erro do '_db')
+    public RegisterOrganizationUseCase(MongoDbContext db)
+    {
+        _db = db;
+    }
+
     public async Task ExecuteAsync(RegisterDto input)
     {
-        // 1. Identificar o Plano escolhido (ex: Básico)
-        var plan = await _db.Plans.Find(p => p.Name == input.PlanName).FirstOrDefaultAsync();
+        // 1. Identificar o Plano escolhido
+        var plan = await _db.Plans
+            .Find(p => p.Name == input.PlanName)
+            .FirstOrDefaultAsync();
+
+        if (plan == null) throw new Exception("Plano não encontrado.");
 
         // 2. Criar Organização
         var org = new Organization(input.CompanyName);
@@ -15,14 +33,19 @@ public class RegisterOrganizationUseCase
 
         // 3. Criar Usuário Admin
         var adminUser = new User(input.AdminPhone);
-        // Vincula usuário à organização (na entidade User, adicione OrganizationId)
+        
+        // Preenche dados adicionais do DTO
+        adminUser.Email = input.AdminEmail; 
+        // Nota: Em produção, use o AuthService.HashPassword(input.Password) aqui
+        adminUser.PasswordHash = input.Password; 
+
         adminUser.OrganizationId = org.Id; 
-        adminUser.Role = UserRole.Admin;
+        adminUser.Role = UserRole.OrganizationAdmin; // Admin da Empresa
 
         // 4. Atualizar lista de membros da Org
         org.MemberIds.Add(adminUser.Id);
 
-        // 5. Persistência Transacional (MongoDB suporta transações em Replica Sets)
+        // 5. Persistência Transacional
         using var session = await _db.Client.StartSessionAsync();
         session.StartTransaction();
         try 

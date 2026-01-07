@@ -1,4 +1,5 @@
-﻿using OmniChat.Domain.Flows;
+﻿using MongoDB.Driver;
+using OmniChat.Domain.Flows;
 using OmniChat.Domain.MCP;
 using OmniChat.Infrastructure.Persistence;
 

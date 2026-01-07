@@ -19,5 +19,3 @@ public class ConversationFlow
     // Definição dos Nós (Steps)
     public List<FlowNode> Nodes { get; set; } = new();
 }
-
-public enum FlowNodeType { Message, Menu, HandoverToHuman, HandoverToAI }

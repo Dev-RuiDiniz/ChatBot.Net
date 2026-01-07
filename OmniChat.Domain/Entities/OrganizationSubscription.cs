@@ -1,5 +1,6 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using OmniChat.Domain.Enums;
 
 namespace OmniChat.Domain.Entities;
 
@@ -15,5 +16,3 @@ public class OrganizationSubscription
     public DateTime? TrialEndsAt { get; set; }
     public DateTime CurrentPeriodEndsAt { get; set; }
 }
-
-public enum SubscriptionStatus { Trialing, Active, PastDue, Canceled }
