@@ -35,8 +35,14 @@ public class WebhookController : ControllerBase
     [HttpPost("meta")]
     public async Task<IActionResult> ReceiveMetaMessage([FromBody] dynamic payload)
     {
-        // Lógica simplificada de extração. Na prática, crie DTOs fortes.
-        // O JSON do WhatsApp Business API é aninhado.
+        string messageId = ExtractId(payload); // "wamid.HBgNM..."
+    
+        if (await _idempotencyService.IsProcessedAsync(messageId))
+        {
+            _logger.LogWarning("Mensagem duplicada ignorada: {Id}", messageId);
+            return Ok(); // Retorna 200 para o Facebook parar de enviar
+        }
+
         try 
         {
             var entry = payload.GetProperty("entry")[0];

@@ -3,15 +3,16 @@ using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using OmniChat.Application.Hubs;
 using OmniChat.Application.Services;
+using OmniChat.Application.Validators;
 using OmniChat.Domain.Entities;
 using OmniChat.Infrastructure.Persistence;
 using OmniChat.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Configuração Global do Mongo para GUIDs ---
-// Isso garante que os GUIDs do C# sejam salvos como strings padrão no Mongo
-// Evita problemas de compatibilidade binary entre drivers.
+builder.Services.AddFluentValidationAutoValidation()
+    .AddFluentValidationClientsideAdapters();
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterDtoValidator>();
 BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
 
 // --- Configuração dos Serviços ---

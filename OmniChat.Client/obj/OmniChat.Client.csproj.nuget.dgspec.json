@@ -62,6 +62,10 @@
               "target": "Package",
               "version": "[4.3.0, )"
             },
+            "FluentValidation": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
             "Microsoft.AspNetCore.Components.WebAssembly.Authentication": {
               "target": "Package",
               "version": "[8.0.0, )"
@@ -70,9 +74,9 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
-            "MudBlazor": {
+            "System.IdentityModel.Tokens.Jwt": {
               "target": "Package",
-              "version": "[8.15.0, )"
+              "version": "[6.24.0, )"
             }
           },
           "imports": [
@@ -148,6 +152,10 @@
             "Blazored.LocalStorage": {
               "target": "Package",
               "version": "[4.3.0, )"
+            },
+            "FluentValidation": {
+              "target": "Package",
+              "version": "[8.0.0, )"
             },
             "Microsoft.AspNetCore.Authorization": {
               "target": "Package",
@@ -253,13 +261,21 @@
               "target": "Package",
               "version": "[4.3.0, )"
             },
+            "FluentValidation": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "FluentValidation.AspNetCore": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
             "Microsoft.AspNetCore.Components.WebAssembly.Authentication": {
               "target": "Package",
               "version": "[8.0.0, )"
             },
             "MudBlazor": {
               "target": "Package",
-              "version": "[8.15.0, )"
+              "version": "[8.0.0, )"
             }
           },
           "imports": [

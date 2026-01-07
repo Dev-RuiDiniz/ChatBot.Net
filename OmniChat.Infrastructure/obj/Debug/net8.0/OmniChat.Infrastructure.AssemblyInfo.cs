@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OmniChat.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+38e09d69ef5734ef92cb2ae9ba1fef530389cba8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f7da034f07d33f8647f3c3ba41c21eed924bb31d")]
 [assembly: System.Reflection.AssemblyProductAttribute("OmniChat.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OmniChat.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
