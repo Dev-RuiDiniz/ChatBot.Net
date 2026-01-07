@@ -1,8 +1,10 @@
 ﻿using FluentValidation;
+using OmniChat.Shared.DTOs; // 1. Adicionado o Using
 
 namespace OmniChat.Application.Validators;
 
-public class RegisterDtoValidator : AbstractValidator<RegisterOrganizationDto>
+// 2. Corrigido o nome da classe genérica para RegisterDto
+public class RegisterDtoValidator : AbstractValidator<RegisterDto>
 {
     public RegisterDtoValidator()
     {
@@ -20,7 +22,8 @@ public class RegisterDtoValidator : AbstractValidator<RegisterOrganizationDto>
             .Matches("[A-Z]").WithMessage("A senha deve conter pelo menos uma letra maiúscula.")
             .Matches("[0-9]").WithMessage("A senha deve conter pelo menos um número.");
 
-        RuleFor(x => x.Phone)
+        // 3. Corrigido de x.Phone para x.AdminPhone (conforme definido no RegisterDto)
+        RuleFor(x => x.AdminPhone)
             .NotEmpty()
             .Matches(@"^\+[1-9]\d{1,14}$").WithMessage("Telefone deve estar no formato E.164 (ex: +5511999999999).");
     }

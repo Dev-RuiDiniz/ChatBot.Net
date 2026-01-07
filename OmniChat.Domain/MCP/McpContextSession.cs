@@ -1,4 +1,5 @@
-﻿using OmniChat.Domain.ValueObjects;
+﻿using OmniChat.Domain.Enums;
+using OmniChat.Domain.ValueObjects;
 
 namespace OmniChat.Domain.MCP;
 
