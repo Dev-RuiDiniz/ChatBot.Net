@@ -1,8 +1,5 @@
 ﻿@page "/dashboard"
-@using Microsoft.AspNetCore.Authorization
-@using MudBlazor
 @rendermode InteractiveServer
-@* @attribute [Authorize(Roles = "OrganizationAdmin")] *@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudGrid>
@@ -17,8 +14,6 @@
                 </MudCardContent>
             </MudCard>
         </MudItem>
-
-        <!-- Gráfico de Uso -->
         <MudItem xs="12" md="8">
             <MudPaper Class="pa-4">
                 <MudChart ChartType="ChartType.Line" ChartSeries="@_series" XAxisLabels="@_xAxisLabels" Width="100%" Height="300px" />
@@ -26,7 +21,6 @@
         </MudItem>
     </MudGrid>
 </MudContainer>
-
 @code {
     public List<ChartSeries> _series = new List<ChartSeries>()
     {
